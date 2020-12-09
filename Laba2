@@ -1,0 +1,193 @@
+#include <iostream>
+#include <stdlib.h>
+#include <chrono>
+#include <mkl.h>
+
+using namespace std;
+
+int main()
+{
+
+	const int32_t N = 1024;
+	int32_t i = N, j = N, k = N;
+	int et = 0;
+	float p = 0.001;
+	const int32_t block_size = 128;
+
+	float* C = new float[N * N];
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			C[i * N + j] = 0;
+		}
+	}
+
+	float* A = new float[N * N];
+	for (i = 0; i < N; i++)
+	{
+		for (k = 0; k < N; k++)
+		{
+			A[i * N + k] = (float)((i / 100) * 0.555);
+		}
+	}
+
+	float* B = new float[N * N];
+	for (k = 0; k < N; k++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			B[k * N + j] = (float)((k / 100) * 0.0555);
+		}
+	}
+
+
+		auto start = chrono::high_resolution_clock::now();
+
+	 cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, i, j, k, 1, A, N, B, N, 0, C, N);
+
+
+		auto end = chrono::high_resolution_clock::now();
+		chrono::duration<double> duration = (end - start);
+		cout << "\nintel mkl: time: " << duration.count() << 's' << endl;
+
+		
+
+	float* Ct = new float[N * N];
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			Ct[i * N + j] = 0;
+		}
+	}
+
+	float* At = new float[N * N];
+	for (i = 0; i < N; i++)
+	{
+		for (k = 0; k < N; k++)
+		{
+			At[i * N + k] = (float)((i / 100) * 0.555);
+		}
+	}
+
+	float* Bt = new float[N * N];
+	for (k = 0; k < N; k++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			Bt[k * N + j] = (float)((k / 100) * 0.0555);
+		}
+	}
+
+
+	auto star = chrono::high_resolution_clock::now();
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			for (k = 0; k < N; k++)
+			{
+				Ct[i * N + j] += At[i * N + k] * Bt[k * N + j];
+			}
+		}
+	}
+	auto en = chrono::high_resolution_clock::now();
+	chrono::duration<double> duratio = (en - star);
+	cout << "\nmath: time: " << duratio.count() << 's' << endl;
+
+	
+
+	float** matrix_1 = new float* [N];
+	matrix_1[0] = new float[N * N];
+	for (i = 1; i < N; ++i)
+	{
+		matrix_1[i] = matrix_1[i - 1] + N;
+	}
+
+	float** matrix_2 = new float* [N];
+	matrix_2[0] = new float[N * N];
+	for (j = 1; j < N; ++j)
+	{
+		matrix_2[j] = matrix_2[j - 1] + N;
+	}
+
+	float** result = new float* [N];
+	result[0] = new float[N * N];
+	for (k = 1; k < N; ++k)
+	{
+		result[k] = result[k - 1] + N;
+	}
+
+
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			result[i][j] = 0;
+		}
+	}
+
+	for (i = 0; i < N; i++)
+	{
+		for (k = 0; k < N; k++)
+		{
+			matrix_1[i][k] = (float)((i / 100) * 0.555);
+		}
+	}
+
+	for (k = 0; k < N; k++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			matrix_2[k][j] = (float)((k / 100) * 0.0555);
+		}
+	}
+
+
+	
+
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			result[i][j] = 0;
+		}
+	}
+
+	auto  startk = chrono::high_resolution_clock::now();
+	for (i = 0; i < N; i += 2)
+	{
+		for (k = 0; k < N; k += 2)
+		{
+			for (j = 0; j < N; j += 2)
+			{
+				result[i][j] += matrix_1[i][k] * matrix_2[k][j];
+				result[i + 1][j + 1] += matrix_1[i + 1][k + 1] * matrix_2[k + 1][j + 1];
+			}
+		}
+	}
+
+	auto endk = chrono::high_resolution_clock::now();
+	chrono::duration<double> durationk = (endk - startk);
+	cout << "\nmy: time: " << durationk.count() << 's' << endl;
+
+
+	delete[]A;
+	delete[]B;
+	delete[]C;
+
+	delete[]At;
+	delete[]Bt;
+	delete[]Ct;
+
+	delete[]matrix_1[0];
+	delete[]matrix_1;
+
+	delete[]matrix_2[0];
+	delete[]matrix_2;
+
+	delete[]result[0];
+	delete[]result;
+	return 0;
+};
